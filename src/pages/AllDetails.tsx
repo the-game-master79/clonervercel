@@ -17,6 +17,7 @@ const AllDetails: React.FC = () => {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [transactionType, setTransactionType] = useState('all');
   const [status, setStatus] = useState('all');
+  const [rowsToShow, setRowsToShow] = useState(10); // State to track rows to display
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -48,7 +49,7 @@ const AllDetails: React.FC = () => {
         (!dateRange.end || new Date(transaction.created_at) <= new Date(dateRange.end));
       return matchesType && matchesStatus && matchesDate;
     })
-    .slice(0, 10); // Limit to 10 transactions
+    .slice(0, rowsToShow); // Limit rows based on rowsToShow
 
   return (
     <div className="space-y-6">
@@ -184,6 +185,14 @@ const AllDetails: React.FC = () => {
           </tbody>
         </table>
       </div>
+      {rowsToShow < transactions.length && (
+        <button
+          onClick={() => setRowsToShow(rowsToShow + 10)} // Increment rowsToShow by 10
+          className="mt-4 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+        >
+          Load More
+        </button>
+      )}
     </div>
   );
 };

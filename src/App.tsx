@@ -15,7 +15,18 @@ function App() {
 
   useEffect(() => {
     const session = localStorage.getItem('session');
-    setIsAuthenticated(!!session);
+    if (session) {
+      try {
+        const parsedSession = JSON.parse(session);
+        // Add additional checks if needed, e.g., token expiration
+        setIsAuthenticated(!!parsedSession);
+      } catch (error) {
+        console.error('Error parsing session:', error);
+        setIsAuthenticated(false);
+      }
+    } else {
+      setIsAuthenticated(false);
+    }
   }, []);
 
   return (

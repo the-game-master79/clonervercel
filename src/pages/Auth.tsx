@@ -1,21 +1,36 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, Mail, Lock } from 'lucide-react';
+import { Wallet, Mail, Lock, AlertCircle, Loader } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 const Auth: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.error('Login failed:', error.message);
-    } else {
-      localStorage.setItem('session', JSON.stringify(data.session));
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
+      
+      if (error) {
+        throw error;
+      }
+
       navigate('/dashboard');
+    } catch (err) {
+      console.error('Login failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to sign in. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -32,6 +47,13 @@ const Auth: React.FC = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {error && (
+            <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4 flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+              <span className="text-sm text-red-700">{error}</span>
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -51,6 +73,7 @@ const Auth: React.FC = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-10 sm:text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="admin@example.com"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -72,6 +95,7 @@ const Auth: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="block w-full pl-10 sm:text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -79,9 +103,17 @@ const Auth: React.FC = () => {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                disabled={isLoading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
               >
-                Sign in
+                {isLoading ? (
+                  <>
+                    <Loader className="animate-spin h-5 w-5 mr-2" />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign in'
+                )}
               </button>
             </div>
           </form>

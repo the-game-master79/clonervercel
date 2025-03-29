@@ -1,53 +1,65 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ArrowRightCircle, List, LogOut, Wallet } from 'lucide-react';
+import { LayoutDashboard, ArrowRightCircle, List, LogOut, Wallet, Plus } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
 
 const Layout: React.FC = () => {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    // Add logout logic here
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/auth');
   };
 
   const handleCreateDemoOrder = async () => {
-    const { data: paymentMethod, error: paymentMethodError } = await supabase
-      .from('payment_methods')
-      .select('id, type, time_limit')
-      .eq('status', true)
-      .neq('type', 'DEMO') // Exclude "DEMO" method
-      .limit(1)
-      .single();
+    try {
+      const { data: paymentMethod, error: paymentMethodError } = await supabase
+        .from('payment_methods')
+        .select('id, type, time_limit')
+        .eq('status', true)
+        .neq('type', 'DEMO')
+        .limit(1)
+        .single();
 
-    if (paymentMethodError) {
-      console.error('Error fetching payment method:', paymentMethodError.message);
-      return;
-    }
+      if (paymentMethodError) {
+        console.error('Error fetching payment method:', paymentMethodError.message);
+        alert('Error fetching payment method. Please try again.');
+        return;
+      }
 
-    if (!paymentMethod) {
-      console.error('No active payment methods available.');
-      alert('No active payment methods available. Please add a valid payment method (UPI, CRYPTO, or BANK).');
-      return;
-    }
+      if (!paymentMethod) {
+        alert('No active payment methods available. Please add a valid payment method (UPI, CRYPTO, or BANK).');
+        return;
+      }
 
-    const orderNumber = uuidv4();
-    const expirationTime = new Date(Date.now() + paymentMethod.time_limit * 60 * 1000); // Use time_limit from payment_methods
-    const { error } = await supabase.from('transactions_history').insert({
-      transaction_id: orderNumber,
-      type: paymentMethod.type, // Use the selected method type
-      amount: 0, // Default amount
-      method: paymentMethod.type,
-      status: 'PENDING',
-      created_at: new Date().toISOString(),
-      expires_at: expirationTime.toISOString(), // Ensure expires_at is set
-    });
+      const orderNumber = uuidv4();
+      const now = new Date();
+      const expirationTime = new Date(now.getTime() + (paymentMethod.time_limit * 60 * 1000));
 
-    if (!error) {
-      navigate(`/landing?order=${orderNumber}&expiresAt=${expirationTime.toISOString()}`);
-    } else {
-      console.error('Error creating order:', error.message);
+      const newTransaction = {
+        transaction_id: orderNumber,
+        type: 'IN', // Change this to explicitly set type as 'IN'
+        amount: 0,
+        method: paymentMethod.type,
+        status: 'PENDING',
+        created_at: now.toISOString(),
+        expires_at: expirationTime.toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('transactions_history')
+        .insert([newTransaction]);
+
+      if (error) {
+        throw error;
+      }
+
+      // Open in new tab instead of navigating
+      window.open(`/landing?order=${orderNumber}&expiresAt=${expirationTime.toISOString()}`, '_blank');
+    } catch (error) {
+      console.error('Error creating order:', error);
+      alert('Failed to create order. Please try again.');
     }
   };
 
@@ -104,6 +116,7 @@ const Layout: React.FC = () => {
             {/* <NavLink to="/payment-out" ... /> */}
             {/* <NavLink to="/api" ... /> */}
           </nav>
+          
           <div className="mt-8">
             <h3 className="text-sm font-semibold text-gray-600">Processing Transactions</h3>
             <ul className="mt-2 space-y-2">

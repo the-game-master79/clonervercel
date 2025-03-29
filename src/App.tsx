@@ -6,48 +6,51 @@ import PaymentOut from './pages/PaymentOut';
 import AllDetails from './pages/AllDetails';
 import Auth from './pages/Auth';
 import API from './pages/API';
-import Landing from './pages/Landing'; // Import the Landing page
+import Landing from './pages/Landing';
 import ProcessingTransactions from './pages/ProcessingTransactions';
-import { useEffect, useState } from 'react';
+import DemoOrder from './pages/DemoOrder';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Loader } from 'lucide-react';
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+function ProtectedRoutes() {
+  const { session, isLoading } = useAuth();
 
-  useEffect(() => {
-    const session = localStorage.getItem('session');
-    if (session) {
-      try {
-        const parsedSession = JSON.parse(session);
-        // Add additional checks if needed, e.g., token expiration
-        setIsAuthenticated(!!parsedSession);
-      } catch (error) {
-        console.error('Error parsing session:', error);
-        setIsAuthenticated(false);
-      }
-    } else {
-      setIsAuthenticated(false);
-    }
-  }, []);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route
-          path="/"
-          element={<Navigate to={isAuthenticated ? '/dashboard' : '/auth'} replace />}
-        />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/landing" element={<Landing />} /> {/* Move this route outside Layout */}
-        <Route element={isAuthenticated ? <Layout /> : <Navigate to="/auth" replace />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/payment-in" element={<PaymentIn />} />
-          <Route path="/payment-out" element={<PaymentOut />} />
-          <Route path="/all-details" element={<AllDetails />} />
-          <Route path="/api" element={<API />} />
-          <Route path="/processing-transactions" element={<ProcessingTransactions />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route
+        path="/"
+        element={<Navigate to={session ? '/dashboard' : '/auth'} replace />}
+      />
+      <Route path="/auth" element={session ? <Navigate to="/dashboard" /> : <Auth />} />
+      <Route path="/landing" element={<Landing />} />
+      <Route element={session ? <Layout /> : <Navigate to="/auth" replace />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/payment-in" element={<PaymentIn />} />
+        <Route path="/payment-out" element={<PaymentOut />} />
+        <Route path="/all-details" element={<AllDetails />} />
+        <Route path="/api" element={<API />} />
+        <Route path="/demo-order" element={<DemoOrder />} />
+        <Route path="/processing-transactions" element={<ProcessingTransactions />} />
+      </Route>
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <ProtectedRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
